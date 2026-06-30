@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+
+    <script src="monaco-editor/vs/loader.js"></script>
+    <script>
+        let editor;
+        let autoNumberingEnabled = false;
+        let autoNumberIncrement = 10;
+        let isUpdating = false;
+
+        require.config({ paths: { vs: 'monaco-editor/vs' } });
+
+        require(['vs/editor/editor.main'], function () {
+            // Register custom BASIC language for Casio FX-880P
+            monaco.languages.register({ id: 'casiobasic' });
+
+            // Configure language with brackets and auto-closing pairs
+            monaco.languages.setLanguageConfiguration('casiobasic', {
+                brackets: [
+                    ['(', ')'],
+                    ['[', ']'],
+                    ['{', '}']
+                ],
+                autoClosingPairs: [
+                    { open: '(', close: ')' },
+                    { open: '[', close: ']' },
+                    { open: '{', close: '}' },
+                    { open: '"', close: '"', notIn: ['string', 'comment'] },
+                    { open: "'", close: "'", notIn: ['string', 'comment'] }
+                ],
+                surroundingPairs: [
+                    { open: '(', close: ')' },
+                    { open: '[', close: ']' },
+                    { open: '{', close: '}' },
+                    { open: '"', close: '"' },
+                    { open: "'", close: "'" }
+                ]
+            });
+
+            // Define syntax highlighting rules
+            monaco.languages.setMonarchTokensProvider('casiobasic', {
+                defaultToken: '',
+                tokenPostfix: '.basic',
+                ignoreCase: true,
+
+                keywords: [
+                    'PRINT', 'INPUT', 'LET', 'IF', 'THEN', 'ELSE', 'FOR', 'TO', 'STEP', 'NEXT',
+                    'GOTO', 'GOSUB', 'RETURN', 'END', 'REM', 'DIM', 'READ', 'DATA', 'RESTORE',
+                    'ON', 'DEF', 'FN', 'STOP', 'CONT', 'RUN', 'LIST', 'NEW', 'CLEAR',
+                    'AND', 'OR', 'NOT', 'MOD', 'WHILE', 'WEND', 'DO', 'LOOP', 'UNTIL'
+                ],
+
+                functions: [
+                    'ABS', 'SIN', 'COS', 'TAN', 'ATN', 'EXP', 'LOG', 'SQR', 'INT', 
+                    'SGN', 'RND', 'PEEK', 'POKE', 'CALL', 'USR', 'ASC', 'CHR', 'LEN',
+                    'LEFT', 'RIGHT', 'MID', 'STR', 'VAL', 'INKEY'
+                ],
+
+                operators: [
+                    '=', '>', '<', '<=', '>=', '<>', '+', '-', '*', '/', '^'
+                ],
+
+                tokenizer: {
+                    root: [
+                        // Line numbers at start
+                        [/^\s*\d+/, 'number.line'],
+
+                        // Whitespace
+                        { include: '@whitespace' },
+
+                        // Keywords
+                        [/\b(?:PRINT|INPUT|LET|IF|THEN|ELSE|FOR|TO|STEP|NEXT|GOTO|GOSUB|RETURN|END|REM|DIM|READ|DATA|RESTORE|ON|DEF|FN|STOP|CONT|RUN|LIST|NEW|CLEAR|AND|OR|NOT|MOD|WHILE|WEND|DO|LOOP|UNTIL)\b/i, 'keyword'],
+
+                        // Functions
+                        [/\b(?:ABS|SIN|COS|TAN|ATN|EXP|LOG|SQR|INT|SGN|RND|PEEK|POKE|CALL|USR|ASC|CHR|LEN|LEFT|RIGHT|MID|STR|VAL|INKEY)\b/i, 'function'],
+
+                        // Identifiers
+                        [/[A-Za-z_]\w*[$%]?/, 'identifier'],
+
+                        // Numbers
+                        [/\d+(\.\d+)?([eE][-+]?\d+)?/, 'number'],
+
+                        // Strings
+                        [/"/, 'string', '@string'],
+
+                        // Operators
+                        [/[=><+\-*\/^]/, 'operator'],
+
+                        // Delimiters
+                        [/[()[\]{},:;]/, 'delimiter'],
+                    ],
+
+                    whitespace: [
+                        [/[ \t\r\n]+/, ''],
+                    ],
+
+                    comment: [
+                        [/.*$/, 'comment'],
+                    ],
+
+                    string: [
+                        [/[^\\"]+/, 'string'],
+                        [/"/, 'string', '@pop']
+                    ]
+                }
+            });
+
+            // Define theme colors
+            monaco.editor.defineTheme('casio-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'number.line', foreground: 'B5CEA8', fontStyle: 'bold' },
+                    { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
+                    { token: 'function', foreground: 'DCDCAA' },
+                    { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+                    { token: 'string', foreground: 'CE9178' },
+                    { token: 'number', foreground: 'B5CEA8' },
+                    { token: 'operator', foreground: 'D4D4D4' },
+                    { token: 'identifier', foreground: '9CDCFE' }
+                ],
+                colors: {
+                    'editor.background': '#1e1e1e',
+                    'editorBracketMatch.background': '#0064001a',
+                    'editorBracketMatch.border': '#888888'
+                }
+            });
+
+            // Create Monaco Editor instance
+            editor = monaco.editor.create(document.getElementById('container'), {
+                value: '',
+                language: 'casiobasic',
+                theme: 'casio-dark',
+                automaticLayout: true,
+                fontSize: 14,
+                fontFamily: 'Consolas, "Courier New", monospace',
+                lineNumbers: 'off', // BASIC has its own line numbers
+                folding: false,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                wordWrap: 'off',
+                autoClosingBrackets: 'always',
+                autoClosingQuotes: 'always',
+                autoClosingOvertype: 'always',
+                autoSurround: 'languageDefined',
+                bracketPairColorization: { enabled: true },
+                matchBrackets: 'always',
+                formatOnPaste: false,
+                formatOnType: false,
+                tabSize: 4,
+                insertSpaces: true,
+                renderWhitespace: 'none',
+                quickSuggestions: false,
+                suggestOnTriggerCharacters: false
+            });
+
+            // Handle Enter key for auto-numbering
+            editor.onKeyDown(function (e) {
+                if (e.keyCode === monaco.KeyCode.Enter && autoNumberingEnabled) {
+                    const model = editor.getModel();
+                    const position = editor.getPosition();
+                    const lineContent = model.getLineContent(position.lineNumber);
+
+                    // Extract line number from current line
+                    const match = lineContent.match(/^(\d+)\s/);
+
+                    if (match) {
+                        e.preventDefault();
+
+                        const currentNum = parseInt(match[1]);
+                        const nextNum = currentNum + autoNumberIncrement;
+
+                        // Insert new line with number
+                        const insertText = '\n' + nextNum + ' ';
+                        editor.executeEdits('auto-numbering', [{
+                            range: new monaco.Range(
+                                position.lineNumber,
+                                position.column,
+                                position.lineNumber,
+                                position.column
+                            ),
+                            text: insertText
+                        }]);
+
+                        // Move cursor after the line number
+                        editor.setPosition({
+                            lineNumber: position.lineNumber + 1,
+                            column: String(nextNum).length + 2
+                        });
+                    }
+                }
+            });
+
+            // Notify on content change
+            editor.onDidChangeModelContent(function () {
+                if (!isUpdating) {
+                    notifyTextChanged();
+                }
+            });
+
+            // Focus the editor
+            editor.focus();
+
+            // Notify initialization complete
+            notifyInitialized();
+        });
+
+        // Get text content
+        function getEditorText() {
+            return editor ? editor.getValue() : '';
+        }
+
+        // Set text content
+        function setEditorText(text) {
+            if (!editor || isUpdating) return;
+            isUpdating = true;
+            editor.setValue(text || '');
+            isUpdating = false;
+        }
+
+        // Enable/disable auto-numbering
+        function setAutoNumbering(enabled, increment) {
+            autoNumberingEnabled = enabled;
+            if (increment !== undefined) autoNumberIncrement = increment;
+            console.log('Auto-numbering:', enabled, 'Increment:', autoNumberIncrement);
+        }
+
+        // Notify C# of text changes
+        function notifyTextChanged() {
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({
+                    type: 'textChanged',
+                    value: getEditorText()
+                });
+            }
+        }
+
+        // Notify initialization
+        function notifyInitialized() {
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage({ type: 'initialized' });
+            }
+        }
+
+        // Export functions
+        window.getEditorText = getEditorText;
+        window.setEditorText = setEditorText;
+        window.setAutoNumbering = setAutoNumbering;
+    </script>
+</body>
+</html>

@@ -34,9 +34,20 @@ namespace Casio880PEditor
             {
                 await EnsureCoreWebView2Async(null);
 
-                // Navigate to the Monaco Editor HTML
-                string html = GetMonacoHtml();
-                CoreWebView2.NavigateToString(html);
+                // Use local HTML file
+                string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wwwroot", "editor.html");
+
+                if (File.Exists(htmlPath))
+                {
+                    // Navigate to local file
+                    CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
+                }
+                else
+                {
+                    // Fallback: use embedded HTML if file not found
+                    string html = GetEmbeddedEditorHtml();
+                    CoreWebView2.NavigateToString(html);
+                }
 
                 // Wait for initialization
                 await _initializationTcs.Task;
@@ -56,7 +67,17 @@ namespace Casio880PEditor
         }
 
         /// <summary>
-        /// Get the HTML for Monaco Editor with Casio BASIC language definition
+        /// Get embedded HTML for editor (fallback)
+        /// </summary>
+        private string GetEmbeddedEditorHtml()
+        {
+            // This is the fallback HTML if the external file is not found
+            // For now, we'll keep the CDN version as fallback
+            return GetMonacoHtml();
+        }
+
+        /// <summary>
+        /// Get the HTML for Monaco Editor with Casio BASIC language definition (CDN version - fallback)
         /// </summary>
         private string GetMonacoHtml()
         {

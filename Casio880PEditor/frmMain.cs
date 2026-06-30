@@ -6,7 +6,7 @@ namespace Casio880PEditor
         private string? _currentFilePath;
         private bool _isModified;
         private bool _isEditorInitialized = false;
-        private bool _autoNumbering = false;
+        private bool _autoNumbering = true; // Match the menu default state
         private int _autoNumberIncrement = BasicLineNumbering.DEFAULT_INCREMENT;
 
         public frmMain()
@@ -31,7 +31,11 @@ namespace Casio880PEditor
                 await monacoEditor.InitializeAsync();
                 monacoEditor.TextChanged += MonacoEditor_TextChanged;
                 _isEditorInitialized = true;
-                UpdateStatus("Ready");
+
+                // Set auto-numbering to match the menu default state
+                await monacoEditor.SetAutoNumberingAsync(_autoNumbering, _autoNumberIncrement);
+
+                UpdateStatus($"Ready - Auto line numbering: {(_autoNumbering ? "ON" : "OFF")}");
             }
             catch (Exception ex)
             {

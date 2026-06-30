@@ -146,16 +146,14 @@
             autoNumberingToolStripMenuItem.CheckOnClick = true;
             autoNumberingToolStripMenuItem.CheckState = CheckState.Checked;
             autoNumberingToolStripMenuItem.Name = "autoNumberingToolStripMenuItem";
-            autoNumberingToolStripMenuItem.ShortcutKeys = Keys.F7;
-            autoNumberingToolStripMenuItem.Size = new Size(208, 22);
+            autoNumberingToolStripMenuItem.Size = new Size(189, 22);
             autoNumberingToolStripMenuItem.Text = "Auto &Line Numbering";
             autoNumberingToolStripMenuItem.Click += AutoNumberingToolStripMenuItem_Click;
             // 
             // renumberToolStripMenuItem
             // 
             renumberToolStripMenuItem.Name = "renumberToolStripMenuItem";
-            renumberToolStripMenuItem.ShortcutKeys = Keys.F8;
-            renumberToolStripMenuItem.Size = new Size(208, 22);
+            renumberToolStripMenuItem.Size = new Size(189, 22);
             renumberToolStripMenuItem.Text = "&Renumber Program";
             renumberToolStripMenuItem.Click += RenumberToolStripMenuItem_Click;
             // 
